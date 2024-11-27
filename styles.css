@@ -1,0 +1,26 @@
+.context-menu-item {
+    transition: background-color 0.2s;
+}
+
+.context-menu-item:hover {
+    background-color: rgba(139, 92, 246, 0.1);
+}
+
+.prose {
+    max-width: 65ch;
+    line-height: 1.6;
+}
+
+.prose p {
+    margin-bottom: 1em;
+}
+
+.prose pre {
+    margin: 1em 0;
+}
+
+.prose code {
+    font-family: monospace;
+    font-size: 0.9em;
+} 
+

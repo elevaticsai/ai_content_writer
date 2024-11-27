@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Writing Assistant Pro</title>
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Alpine.js -->
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Medium Editor -->
+    <script src="//cdn.jsdelivr.net/npm/medium-editor@5.23.2/dist/js/medium-editor.min.js"></script>
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/medium-editor@5.23.2/dist/css/medium-editor.min.css">
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/medium-editor@5.23.2/dist/css/themes/default.css">
+    <!-- Custom Scripts -->
+    <script src="llm-api-client.js"></script>
+    <script src="ui.js"></script>
+    <script src="prompts.js"></script>
+    <script src="utilities.js"></script>
+
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            background-color: #f8fafc;
+        }
+
+        /* Editor container */
+        .editor-wrapper {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .editor-wrapper:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Editor styles */
+        .editable {
+            outline: none;
+            border: none !important;
+            padding: 24px !important;
+            margin-bottom: 20px;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #1a1a1a;
+        }
+
+        /* Typography */
+        .editable h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 2rem 0 1rem;
+            color: #1a1a1a;
+        }
+
+        .editable h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin: 1.75rem 0 0.875rem;
+            color: #1a1a1a;
+        }
+
+        .editable h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: #1a1a1a;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+            min-width: 220px;
+        }
+
+        .context-menu-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            color: #374151;
+            transition: all 0.2s ease;
+            border-radius: 6px;
+            margin: 2px;
+        }
+
+        .context-menu-item:hover {
+            background-color: #f3f4f6;
+            color: #6d28d9;
+        }
+
+        .context-menu-item i {
+            width: 20px;
+            margin-right: 8px;
+        }
+
+        /* Header */
+        .app-header {
+            background: linear-gradient(to right, #6d28d9, #7c3aed);
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* AI Response area */
+        .ai-response {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .ai-response-header {
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: #6d28d9;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #5b21b6;
+        }
+
+        .btn-secondary {
+            background-color: #4b5563;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #374151;
+        }
+
+        .btn-danger {
+            background-color: #dc2626;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            border-color: #6d28d9;
+            border-right-color: transparent;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div x-data="writingAssistant">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="container mx-auto">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-feather-alt text-white text-2xl"></i>
+                        <h1 class="text-2xl font-bold text-white">AI Writing Assistant Pro</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-save"></i>
+                            <span>Save</span>
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-cog"></i>
+                            <span>Settings</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto p-6">
+            <div class="flex gap-6">
+                <!-- Editor Column -->
+                <div class="flex-1" style="max-width: 800px;">
+                    <div class="editor-wrapper">
+                        <div class="relative">
+                            <div class="editor-container">
+                                <div
+                                    id="editor"
+                                    class="editable min-h-[calc(100vh-12rem)]"
+                                    @contextmenu.prevent="handleContextMenu($event)"
+                                ></div>
+                            </div>
+
+                            <!-- Enhanced Context Menu -->
+                            <div
+                                x-show="showContextMenu"
+                                x-transition
+                                :style="`position: fixed; left: ${contextMenuX}px; top: ${contextMenuY}px`"
+                                class="context-menu z-50">
+                                <ul class="py-2">
+                                    <li>
+                                        <button @click="generateFromPrompt" class="context-menu-item w-full">
+                                            <i class="fas fa-magic"></i>
+                                            Generate using AI
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button @click="improveText" class="context-menu-item w-full">
+                                            <i class="fas fa-pen-fancy"></i>
+                                            Improve Writing
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button @click="checkGrammar" class="context-menu-item w-full">
+                                            <i class="fas fa-spell-check"></i>
+                                            Check Grammar
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button @click="makeConcise" class="context-menu-item w-full">
+                                            <i class="fas fa-compress-alt"></i>
+                                            Make Concise
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button @click="explainText" class="context-menu-item w-full">
+                                            <i class="fas fa-lightbulb"></i>
+                                            Explain This
+                                        </button>
+                                    </li>
+                                    <li><hr class="my-2 border-gray-200"></li>
+                                    <li>
+                                        <button class="context-menu-item w-full">
+                                            <i class="fas fa-language"></i>
+                                            Translate
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="context-menu-item w-full">
+                                            <i class="fas fa-theater-masks"></i>
+                                            Change Tone
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Response Column -->
+                <div class="w-full" style="max-width: 400px;" x-show="aiResponse || isLoading">
+                    <!-- AI Response Area -->
+                    <div x-show="aiResponse" class="ai-response p-6">
+                        <div class="ai-response-header flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-robot text-purple-600"></i>
+                                <h3 class="font-semibold text-lg">AI Suggestion</h3>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button @click="insertResponse" class="btn btn-primary">
+                                    <i class="fas fa-check"></i>
+                                    <span>Insert</span>
+                                </button>
+                                <button @click="retryResponse" class="btn btn-secondary">
+                                    <i class="fas fa-redo"></i>
+                                    <span>Retry</span>
+                                </button>
+                                <button @click="cancelResponse" class="btn btn-danger">
+                                    <i class="fas fa-times"></i>
+                                    <span>Cancel</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-html="aiResponse" class="prose max-h-[calc(100vh-16rem)] overflow-y-auto"></div>
+                    </div>
+
+                    <!-- Loading Indicator -->
+                    <div x-show="isLoading" class="mt-4 flex items-center justify-center">
+                        <div class="loading-spinner animate-spin rounded-full h-8 w-8 border-b-2"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
